@@ -25,10 +25,11 @@
  * - MUX Channel 6 <--> "joint_1"
  *
  * ROS 2 TOPICS PUBLISHED:
- * 1. /joint_states     (sensor_msgs/msg/JointState)
+ * 1. /arm_control/joint_states (sensor_msgs/msg/JointState)
  *    - name[]:     ["base", "joint_5", "joint_3", "joint_4", "joint_2", "trigger", "joint_1"]
- *    - position[]: 7 joint angles in normal angles [0.0 to 180.0]
- * 2. /arm/joint_raw    (std_msgs/msg/Int32MultiArray)
+ *    - position[]: 7 encoder angles in degrees [0.0 to less than 360.0]
+ *      This project's topic uses degrees; standard JointState uses radians.
+ * 2. /arm_control/joint_raw (std_msgs/msg/Int32MultiArray)
  *    - data[]:     7 raw 12-bit encoder counts [0 to 4095]
  *
  * MODES:
@@ -217,14 +218,14 @@ bool create_entities() {
     &joint_state_publisher,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
-    "/joint_states"));
+    "/arm_control/joint_states"));
 
   // Publisher for std_msgs/msg/Int32MultiArray
   RCCHECK(rclc_publisher_init_default(
     &raw_array_publisher,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32MultiArray),
-    "/arm/joint_raw"));
+    "/arm_control/joint_raw"));
 
   // Synchronize time with the ROS 2 agent
   rmw_uros_sync_session(1000);
@@ -248,8 +249,8 @@ void publish_data() {
   joint_state_msg.header.stamp.nanosec = (uint32_t)(time_ns % 1000000000LL);
 
   for (uint8_t ch = 0; ch < NUM_CHANNELS; ch++) {
-    // Normal angles in 0 to 180 degrees for joint_state
-    position_array[ch] = (double)channel_data[ch].angle_180;
+    // Full encoder angle in degrees for this project's joint_states topic.
+    position_array[ch] = (double)channel_data[ch].degrees;
     raw_array_data[ch] = (int32_t)channel_data[ch].raw_angle;
   }
 
